@@ -3,6 +3,10 @@ from Schedulers.lambda_scheduler import LambdaLR
 from Schedulers.step_scheduler import StepLR
 
 
+def _constant_zero(_):
+    return 0.0
+
+
 # ── Scheduler factories ──────────────────────────────────────────────────────
 
 def cosine_scheduler(optimizer, args):
@@ -29,7 +33,13 @@ def lambda_scheduler(optimizer, args):
 
 # ── Registry ─────────────────────────────────────────────────────────────────
 
+def none_scheduler(optimizer, args):
+    """No-op scheduler used when the notebook requests no scheduler."""
+    return LambdaLR(optimizer, lr_lambda=_constant_zero)
+
+
 schedulers = {
+    "none":    none_scheduler,
     "cosine":  cosine_scheduler,
     "step":    step_scheduler,
     "lambda":  lambda_scheduler,
