@@ -1078,3 +1078,224 @@ Effect of the fix:
 
 - This should improve numerical stability during training.
 - If `nan` loss persists after this change, the next step is to continue checking other high-impact training-stability issues such as gradient clipping order or optimizer update rules.
+
+## Post-run Investigation 002
+
+Location:
+
+- Section 3 - Train
+- Follow-up after the training loop remained runnable but continued to produce persistent `nan` loss values
+
+Most important issue information:
+
+- The pipeline could execute training, evaluation, and checkpointing.
+- However, loss values still became `nan`, which pointed to deeper numerical-stability issues rather than a hard execution blocker.
+- A second round of focused inspection was performed on high-impact model components that can directly blow up activations or attention scores.
+
+Why this part was investigated:
+
+- After fixing the first obvious numerical issue in custom dropout, the training run still showed persistent `nan` loss.
+- That suggested there were additional model-side numerical hazards.
+- The review focused on large logical issues that directly affect value scales, while intentionally deferring optimizer-side refinement.
+
+Problems found after checking the related parts:
+
+- In `Models/encoder.py`, multi-head attention computed `q @ k^T` without applying the standard scaling factor `1 / sqrt(d_k)`.
+- In `Models/Initializations/kaiming.py`, the implemented standard deviation used `sqrt(1 / fan)` even though the code comments and the intended Kaiming formula require `sqrt(2 / fan)`.
+- In `Models/Initializations/xavier.py`, the implemented standard deviation used `sqrt(2 / (fan_in * fan_out))` instead of the intended `sqrt(2 / (fan_in + fan_out))`.
+- All three issues can distort activation magnitudes and make exploding values more likely in a deep attention model.
+
+Applied fix:
+
+- Restored scaled dot-product attention in multi-head attention.
+- Corrected the Kaiming initialization formulas.
+- Corrected the Xavier initialization formulas.
+
+Code change:
+
+Attention scaling
+
+Original
+
+```python
+attn = torch.bmm(q, k.transpose(1, 2))
+```
+
+Updated
+
+```python
+attn = torch.bmm(q, k.transpose(1, 2)) * self.scale
+```
+
+Kaiming initialization
+
+Original
+
+```python
+std = math.sqrt(1.0 / fan)
+```
+
+Updated
+
+```python
+std = math.sqrt(2.0 / fan)
+```
+
+Xavier initialization
+
+Original
+
+```python
+std = gain * math.sqrt(2.0 / (fan_in * fan_out))
+```
+
+Updated
+
+```python
+std = gain * math.sqrt(2.0 / (fan_in + fan_out))
+```
+
+Reason for the fix:
+
+- Scaled dot-product attention is needed to prevent attention logits from growing too large before softmax.
+- Correct Kaiming and Xavier formulas are needed to keep layer activations in a stable numerical range from initialization onward.
+- These changes were grouped together because they all emerged from repeated debugging of the same persistent `nan` symptom and all directly affect value scale rather than optimization policy.
+
+Effect of the fix:
+
+- This should further improve numerical stability during training and reduce the chance of exploding activations or saturated attention.
+- If `nan` loss still persists after these corrections, the next likely places to inspect are training-loop gradient handling and optimizer update implementation.
+
+## Post-run Investigation 003
+
+Location:
+
+- Section 3 - Train
+- Follow-up after the training loop became runnable but loss values still remained `nan`
+
+Most important issue information:
+
+- The pipeline could now run through training, evaluation, and checkpointing.
+- However, the loss remained `nan`, so the next review focused on high-impact training-stability issues in the update path.
+- This round specifically checked gradient handling in the training loop and the custom SGD update rule.
+
+Why this part was investigated:
+
+- Persistent `nan` after the earlier model-side fixes suggested that unstable parameter updates could still be pushing the model into invalid numerical states.
+- The most obvious non-optimizer-policy issues in the update path were gradient clipping order and the sign of weight decay in the custom SGD implementation.
+
+Problems found after checking the related parts:
+
+- In `TrainTools/train_utils.py`, gradient clipping was applied after `optimizer.step()`.
+- That means large gradients were allowed to update the parameters first, and clipping happened too late to protect the current step.
+- In `Optimizers/sgd.py`, the `weight_decay` term was added with the wrong sign.
+- That makes the update direction inconsistent with standard L2-style decay and can further destabilize training.
+
+Applied fix:
+
+- Moved gradient clipping to occur before the optimizer step.
+- Corrected the sign of the `weight_decay` term in the custom SGD implementation.
+
+Code change:
+
+Gradient clipping order
+
+Original
+
+```python
+loss.backward()
+optimizer.step()
+torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+scheduler.step()
+```
+
+Updated
+
+```python
+loss.backward()
+torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+optimizer.step()
+scheduler.step()
+```
+
+SGD weight decay
+
+Original
+
+```python
+grad = grad.add(p, alpha=-wd)
+```
+
+Updated
+
+```python
+grad = grad.add(p, alpha=wd)
+```
+
+Reason for the fix:
+
+- Gradient clipping only protects the current update if it is applied before the optimizer step.
+- Standard SGD with L2-style decay adds the parameter term to the gradient; using the opposite sign distorts the update direction.
+- These changes were grouped together because both affect the stability of parameter updates and were part of the same repeated `nan` debugging pass.
+
+Effect of the fix:
+
+- This should make the update path more stable and reduce the chance that large gradients or a malformed decay term immediately corrupt the parameters.
+- If `nan` still persists after this change, the remaining issues are likely deeper model-side numerical problems or additional custom optimizer logic.
+
+## Error 018
+
+Location:
+
+- Section 4 - Evaluate
+
+Most important error information:
+
+- Training completed and produced a checkpoint file.
+- The failure occurred when `evaluate(...)` tried to load the saved model weights from that checkpoint.
+- Error type: `KeyError`
+- Core message:
+  `'model'`
+
+Preliminary analysis:
+
+- This is a checkpoint field-name mismatch, not a model-forward or evaluation-metric computation problem.
+- The checkpoint file exists and is readable, but the evaluation code is trying to access a key that is not present.
+
+Possible cause inferred from the traceback:
+
+- The training code and evaluation code are using different names for the saved model state inside the checkpoint payload.
+
+Problems found after checking the related parts:
+
+- In `TrainTools/train_utils.py`, the checkpoint is saved with the key `model_state`.
+- In `EvaluateTools/evaluate.py`, the evaluation code attempted to load `ckpt["model"]`.
+- Because those two names do not match, evaluation fails immediately at checkpoint loading.
+
+Applied fix:
+
+- Corrected the checkpoint key used by the evaluation code so it matches the key written during training.
+
+Code change:
+
+Original
+
+```python
+model.load_state_dict(ckpt["model"])
+```
+
+Updated
+
+```python
+model.load_state_dict(ckpt["model_state"])
+```
+
+Reason for the fix:
+
+- The saved checkpoint format must be read consistently by both training and evaluation.
+- Using the actual saved field name allows evaluation to reload the checkpoint correctly.
+
+Effect of the fix:
+
+- Section 4 should now move past this checkpoint-loading key mismatch.
+- The next rerun should expose any remaining evaluation-path issues, if any remain.
