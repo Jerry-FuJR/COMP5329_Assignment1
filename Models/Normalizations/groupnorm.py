@@ -32,13 +32,15 @@ class GroupNorm(nn.Module):
         spatial = x.shape[2:]  # e.g. (L,) or (H, W)
 
         # Reshape to [B, G, C//G, *spatial] to isolate groups
-        x = x.view(B, C // self.G, self.G, *spatial)
+        x = x.view(B, self.G, C // self.G, *spatial)
 
         # Normalize over (C//G, *spatial) dims, i.e. everything from dim=2 onward
         dims = tuple(range(2, x.ndim))
         mean = x.mean(dim=dims, keepdim=True)
         var = x.var(dim=dims, keepdim=True, unbiased=False)
         x = (x - mean) / torch.sqrt(var + self.eps)
+
+        # Reshape back to [B, C, *spatial]
 
         # Restore to [B, C, *spatial]
         x = x.view(B, C, *spatial)

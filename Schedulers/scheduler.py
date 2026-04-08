@@ -3,7 +3,9 @@ from Schedulers.lambda_scheduler import LambdaLR
 from Schedulers.step_scheduler import StepLR
 
 
-# ── Scheduler factories ──────────────────────────────────────────────────────
+def _constant_lr(_):
+    return 1.0
+
 
 def cosine_scheduler(optimizer, args):
     """Cosine annealing over the full training run."""
@@ -23,14 +25,12 @@ def step_scheduler(optimizer, args):
 
 
 def lambda_scheduler(optimizer, args):
-    """LambdaLR with a constant factor of 1.0 — learning rate stays fixed."""
-    return LambdaLR(optimizer, lr_lambda=lambda _: 1.0)
+    """LambdaLR with a constant factor of 1.0; learning rate stays fixed."""
+    return LambdaLR(optimizer, lr_lambda=_constant_lr)
 
-
-# ── Registry ─────────────────────────────────────────────────────────────────
 
 schedulers = {
-    "cosine":  cosine_scheduler,
-    "step":    step_scheduler,
-    "lambda":  lambda_scheduler,
+    "cosine": cosine_scheduler,
+    "step": step_scheduler,
+    "lambda": lambda_scheduler,
 }
