@@ -3,8 +3,8 @@ from Schedulers.lambda_scheduler import LambdaLR
 from Schedulers.step_scheduler import StepLR
 
 
-def _constant_zero(_):
-    return 0.0
+def _constant_one(_):
+    return 1.0
 
 
 # ── Scheduler factories ──────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ def lambda_scheduler(optimizer, args):
 
 def none_scheduler(optimizer, args):
     """No-op scheduler used when the notebook requests no scheduler."""
-    return LambdaLR(optimizer, lr_lambda=_constant_zero)
+    return LambdaLR(optimizer, lr_lambda=_constant_one)
 
 
 schedulers = {

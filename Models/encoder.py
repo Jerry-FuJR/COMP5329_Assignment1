@@ -121,7 +121,7 @@ class EncoderBlock(nn.Module):
             out = self.norms[i](out)
 
         out = self.self_att(out, mask)
-        out = res
+        out = out + res
         out = self.drop(out)
 
         res = out

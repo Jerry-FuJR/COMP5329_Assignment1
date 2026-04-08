@@ -32,11 +32,6 @@ Problems found after checking the related part:
 - The argument-packaging step inside `TrainTools/train.py` is incorrect.
 - Because of that, training stops before model initialization and before any real learning logic is executed.
 
-Implication for debugging order:
-
-- This should be treated as the first internal Stage I blocker in Section 3.
-- It must be fixed before any deeper training-pipeline bugs can be exposed.
-
 Applied fix:
 
 - Corrected the argument container construction in the training entry path.
@@ -61,10 +56,6 @@ Reason for the fix:
 - That packaging step used the wrong call form, which caused training to fail before model initialization.
 - The fix changes the call so the collected values are passed in the way `argparse.Namespace` expects.
 
-Effect of the fix:
-
-- Section 3 can now move past the argument-packaging stage.
-- The next rerun should expose the next real blocker deeper in the training pipeline, if any remain.
 
 ## Error 002
 
@@ -119,10 +110,6 @@ Reason for the fix:
 - The positional encoding must combine a `[C, 1]` frequency term with a `[C, L]` position grid.
 - Using the wrong singleton axis caused the model to fail during encoder initialization.
 
-Effect of the fix:
-
-- Section 3 should now move past positional encoding construction.
-- The next rerun should reveal the next deeper blocker, if one remains.
 
 ## Error 003
 
@@ -163,9 +150,13 @@ Code change:
 Added
 
 ```python
+def _constant_one(_):
+    return 1.0
+
+
 def none_scheduler(optimizer, args):
     """No-op scheduler used when the notebook requests no scheduler."""
-    return LambdaLR(optimizer, lr_lambda=lambda _: 0.0)
+    return LambdaLR(optimizer, lr_lambda=_constant_one)
 ```
 
 Registry update
@@ -196,10 +187,6 @@ Reason for the fix:
 - The training configuration used in Section 3 explicitly requests `scheduler_name="none"`.
 - To make that configuration executable, the scheduler registry needs a corresponding entry that leaves the learning rate unchanged.
 
-Effect of the fix:
-
-- Section 3 can now accept the notebook's stated scheduler choice.
-- The next rerun should move deeper into the training pipeline and expose the next blocker, if any remain.
 
 ## Error 004
 
@@ -257,10 +244,6 @@ Reason for the fix:
 - The dataset loader clearly distinguishes between word-level and character-level index tensors.
 - Passing them into the wrong embedding tables produces invalid embedding lookups and triggers the observed `IndexError`.
 
-Effect of the fix:
-
-- Section 3 should now move past this embedding lookup failure.
-- The next rerun should expose the next deeper blocker in the forward or training pipeline, if one remains.
 
 ## Error 005
 
@@ -315,10 +298,6 @@ Reason for the fix:
 - The 2D character convolution is constructed with `in_channels = d_char`.
 - If the input tensor does not place `d_char` on the channel axis, the convolution internals break immediately.
 
-Effect of the fix:
-
-- Section 3 should now move past this character-convolution shape mismatch.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 006
 
@@ -373,10 +352,6 @@ Reason for the fix:
 - After height padding, the tensor shape changes.
 - Any later width-padding tensor must match that updated height, otherwise concatenation along the width axis fails immediately.
 
-Effect of the fix:
-
-- Section 3 should now move past this 2D padding mismatch in the custom convolution.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 007
 
@@ -431,10 +406,6 @@ Reason for the fix:
 - The highway layer is defined with feature size `d_word + d_char = 364`.
 - Therefore the last dimension passed into the linear layers must be the feature dimension, not the batch dimension.
 
-Effect of the fix:
-
-- Section 3 should now move past this highway-layer shape mismatch.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 008
 
@@ -489,10 +460,6 @@ Reason for the fix:
 - A 1D convolution over `[B, C_in, L]` must slide over `L`, not over `C_in`.
 - Using the wrong axis corrupts the internal tensor layout and causes the grouped reshape to fail.
 
-Effect of the fix:
-
-- Section 3 should now move past this custom 1D convolution window-extraction error.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 009
 
@@ -547,10 +514,6 @@ Reason for the fix:
 - Standard depthwise-separable convolution first performs channel-wise spatial filtering, then mixes channels with a pointwise projection.
 - Reversing that order breaks the expected channel/group relationship for the depthwise stage.
 
-Effect of the fix:
-
-- Section 3 should now move past this channel-ordering problem in the depthwise-separable convolution block.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 010
 
@@ -614,10 +577,6 @@ Reason for the fix:
 - The current runtime blocker is the broadcasting failure, which requires `keepdim=True`.
 - The affine formula bug is in the same function and part of the same normalization implementation, so it was corrected together to avoid leaving an obviously invalid LayerNorm definition in place.
 
-Effect of the fix:
-
-- Section 3 should now move past this LayerNorm broadcasting failure.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 011
 
@@ -670,10 +629,6 @@ Reason for the fix:
 - The normalization layer list has one element per convolution block.
 - Each loop iteration should use the normalization layer at the same index as the current convolution stage.
 
-Effect of the fix:
-
-- Section 3 should now move past this encoder normalization indexing error.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 012
 
@@ -727,10 +682,6 @@ Reason for the fix:
 - Context and question masks must align with their respective sequence lengths.
 - Passing them in the wrong order breaks the masking step inside attention.
 
-Effect of the fix:
-
-- Section 3 should now move past this context-question attention mask mismatch.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 013
 
@@ -786,10 +737,6 @@ Reason for the fix:
 - The attention weights should be used to aggregate question vectors for each context position.
 - That requires the multiplication order `S1 @ Q`, which yields the correct `[B, Lc, C]` result.
 
-Effect of the fix:
-
-- Section 3 should now move past this context-question attention multiplication-order error.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 014
 
@@ -843,10 +790,6 @@ Reason for the fix:
 - The pointer parameter vector is sized for `2C` features.
 - Therefore the model states must be concatenated along the feature/channel axis, not the batch axis.
 
-Effect of the fix:
-
-- Section 3 should now move past this pointer-head concatenation mismatch.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 015
 
@@ -899,10 +842,6 @@ Reason for the fix:
 - `F.nll_loss` expects the model prediction first and the class-index target second.
 - Reversing them makes PyTorch interpret the tensors with incompatible semantics and shapes.
 
-Effect of the fix:
-
-- Section 3 should now move past this NLL loss argument-order error.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 016
 
@@ -956,106 +895,49 @@ Reason for the fix:
 - Autograd can only backpropagate through a tensor that still carries its computation graph.
 - Converting the loss to a Python number destroys that graph before the backward pass.
 
-Effect of the fix:
-
-- Section 3 should now move past this backward-call error.
-- The next rerun should expose the next deeper blocker, if one remains.
 
 ## Error 017
 
 Location:
 
 - Section 3 - Train
-
-Most important error information:
-
-- The training loop now runs through optimization and evaluation.
-- The failure occurs when saving the checkpoint after the evaluation block.
-- Error type: `AttributeError`
-- Core message:
-  `Can't pickle local object 'none_scheduler.<locals>.<lambda>'`
-
-Preliminary analysis:
-
-- This is a checkpoint-serialization problem, not a forward-pass or backward-pass execution problem.
-- The selected scheduler is `none`, so the most likely source is the implementation of the no-op scheduler.
-- The training itself is able to proceed further than before; the crash happens when persisting the scheduler state.
-
-Possible cause inferred from the traceback:
-
-- The scheduler contains a local anonymous function, and Python cannot pickle local lambdas during checkpoint serialization.
-
-Problems found after checking the related part:
-
-- In `Schedulers/scheduler.py`, `none_scheduler(...)` returned `LambdaLR(..., lr_lambda=lambda _: 0.0)`.
-- That lambda was defined inside the local scope of `none_scheduler(...)`.
-- When the checkpoint code attempts to serialize the scheduler state, that local callable cannot be pickled.
-
-Applied fix:
-
-- Replaced the local lambda used by `none_scheduler(...)` with a module-level named function.
-
-Code change:
-
-Original
-
-```python
-def none_scheduler(optimizer, args):
-    """No-op scheduler used when the notebook requests no scheduler."""
-    return LambdaLR(optimizer, lr_lambda=lambda _: 0.0)
-```
-
-Updated
-
-```python
-def _constant_zero(_):
-    return 0.0
-
-
-def none_scheduler(optimizer, args):
-    """No-op scheduler used when the notebook requests no scheduler."""
-    return LambdaLR(optimizer, lr_lambda=_constant_zero)
-```
-
-Reason for the fix:
-
-- A module-level named function can be serialized, while a local lambda cannot.
-- This preserves the intended no-op scheduler behavior while allowing checkpoint saving to proceed.
-
-Effect of the fix:
-
-- Section 3 should now move past this checkpoint-saving failure related to scheduler serialization.
-- The remaining issue visible in this run is the `nan` loss, which is a separate numerical-stability or training-mechanism problem.
-
-## Post-run Investigation 001
-
-Location:
-
-- Section 3 - Train
-- Follow-up after the training loop became runnable but produced persistent `nan` loss values
+- Training became runnable, but persistent `nan` loss remained
 
 Most important issue information:
 
-- The training loop was able to run for multiple evaluation blocks.
+- The training loop was able to run through optimization, evaluation, and checkpointing.
 - However, the reported training loss and evaluation loss became `nan`.
-- This indicates a numerical-stability or training-mechanism problem rather than a pipeline-execution blocker.
+- This indicated that the remaining blocker was no longer pipeline execution, but numerical instability during training.
 
 Why this part was investigated:
 
-- After the Stage I blockers were cleared, the run still showed `nan` loss values.
-- A custom dropout implementation is a high-impact source of activation blow-up because it is used repeatedly throughout the model.
+- After the earlier execution errors were removed, the remaining visible problem was persistent `nan` loss.
+- The investigation therefore focused on high-impact numerical issues in model scaling, initialization, attention, and parameter updates.
+- Although several of the fixes in this section also touch mechanism-level topics that can be viewed as part of Stage II, they were handled here because the immediate priority was to make training numerically stable and prevent persistent `nan` loss from blocking end-to-end executability.
 
-Problems found after checking the related part:
+Problems found after checking the related parts:
 
 - In `Models/dropout.py`, the code sampled a keep mask with probability `1 - p`, which is correct.
 - However, the surviving activations were rescaled by dividing by `p` instead of by `1 - p`.
 - That means the implementation amplified activations far too aggressively, especially for small dropout rates such as `0.1` or `0.05`.
+- In `Models/encoder.py`, multi-head attention computed `q @ k^T` without applying the standard scaling factor `1 / sqrt(d_k)`.
+- In `Models/Initializations/kaiming.py`, the implemented standard deviation used `sqrt(1 / fan)` even though the intended Kaiming formula requires `sqrt(2 / fan)`.
+- In `Models/Initializations/xavier.py`, the implemented standard deviation used `sqrt(2 / (fan_in * fan_out))` instead of `sqrt(2 / (fan_in + fan_out))`.
+- In `TrainTools/train_utils.py`, gradient clipping was applied after `optimizer.step()`.
+- In `Optimizers/sgd.py`, the `weight_decay` term was added with the wrong sign.
 
 Applied fix:
 
 - Corrected the scaling factor in the custom dropout implementation.
+- Restored scaled dot-product attention in multi-head attention.
+- Corrected the Kaiming initialization formulas.
+- Corrected the Xavier initialization formulas.
+- Moved gradient clipping to occur before the optimizer step.
+- Corrected the sign of the `weight_decay` term in the custom SGD implementation.
 
 Code change:
+
+Dropout scaling
 
 Original
 
@@ -1068,50 +950,6 @@ Updated
 ```python
 return x * mask / (1.0 - self.p)
 ```
-
-Reason for the fix:
-
-- In inverted dropout, activations should be scaled by the keep probability, not the drop probability.
-- Using `p` in the denominator can inflate activations enough to destabilize training and contribute to `nan` loss.
-
-Effect of the fix:
-
-- This should improve numerical stability during training.
-- If `nan` loss persists after this change, the next step is to continue checking other high-impact training-stability issues such as gradient clipping order or optimizer update rules.
-
-## Post-run Investigation 002
-
-Location:
-
-- Section 3 - Train
-- Follow-up after the training loop remained runnable but continued to produce persistent `nan` loss values
-
-Most important issue information:
-
-- The pipeline could execute training, evaluation, and checkpointing.
-- However, loss values still became `nan`, which pointed to deeper numerical-stability issues rather than a hard execution blocker.
-- A second round of focused inspection was performed on high-impact model components that can directly blow up activations or attention scores.
-
-Why this part was investigated:
-
-- After fixing the first obvious numerical issue in custom dropout, the training run still showed persistent `nan` loss.
-- That suggested there were additional model-side numerical hazards.
-- The review focused on large logical issues that directly affect value scales, while intentionally deferring optimizer-side refinement.
-
-Problems found after checking the related parts:
-
-- In `Models/encoder.py`, multi-head attention computed `q @ k^T` without applying the standard scaling factor `1 / sqrt(d_k)`.
-- In `Models/Initializations/kaiming.py`, the implemented standard deviation used `sqrt(1 / fan)` even though the code comments and the intended Kaiming formula require `sqrt(2 / fan)`.
-- In `Models/Initializations/xavier.py`, the implemented standard deviation used `sqrt(2 / (fan_in * fan_out))` instead of the intended `sqrt(2 / (fan_in + fan_out))`.
-- All three issues can distort activation magnitudes and make exploding values more likely in a deep attention model.
-
-Applied fix:
-
-- Restored scaled dot-product attention in multi-head attention.
-- Corrected the Kaiming initialization formulas.
-- Corrected the Xavier initialization formulas.
-
-Code change:
 
 Attention scaling
 
@@ -1155,49 +993,6 @@ Updated
 std = gain * math.sqrt(2.0 / (fan_in + fan_out))
 ```
 
-Reason for the fix:
-
-- Scaled dot-product attention is needed to prevent attention logits from growing too large before softmax.
-- Correct Kaiming and Xavier formulas are needed to keep layer activations in a stable numerical range from initialization onward.
-- These changes were grouped together because they all emerged from repeated debugging of the same persistent `nan` symptom and all directly affect value scale rather than optimization policy.
-
-Effect of the fix:
-
-- This should further improve numerical stability during training and reduce the chance of exploding activations or saturated attention.
-- If `nan` loss still persists after these corrections, the next likely places to inspect are training-loop gradient handling and optimizer update implementation.
-
-## Post-run Investigation 003
-
-Location:
-
-- Section 3 - Train
-- Follow-up after the training loop became runnable but loss values still remained `nan`
-
-Most important issue information:
-
-- The pipeline could now run through training, evaluation, and checkpointing.
-- However, the loss remained `nan`, so the next review focused on high-impact training-stability issues in the update path.
-- This round specifically checked gradient handling in the training loop and the custom SGD update rule.
-
-Why this part was investigated:
-
-- Persistent `nan` after the earlier model-side fixes suggested that unstable parameter updates could still be pushing the model into invalid numerical states.
-- The most obvious non-optimizer-policy issues in the update path were gradient clipping order and the sign of weight decay in the custom SGD implementation.
-
-Problems found after checking the related parts:
-
-- In `TrainTools/train_utils.py`, gradient clipping was applied after `optimizer.step()`.
-- That means large gradients were allowed to update the parameters first, and clipping happened too late to protect the current step.
-- In `Optimizers/sgd.py`, the `weight_decay` term was added with the wrong sign.
-- That makes the update direction inconsistent with standard L2-style decay and can further destabilize training.
-
-Applied fix:
-
-- Moved gradient clipping to occur before the optimizer step.
-- Corrected the sign of the `weight_decay` term in the custom SGD implementation.
-
-Code change:
-
 Gradient clipping order
 
 Original
@@ -1234,14 +1029,11 @@ grad = grad.add(p, alpha=wd)
 
 Reason for the fix:
 
-- Gradient clipping only protects the current update if it is applied before the optimizer step.
-- Standard SGD with L2-style decay adds the parameter term to the gradient; using the opposite sign distorts the update direction.
-- These changes were grouped together because both affect the stability of parameter updates and were part of the same repeated `nan` debugging pass.
+- Inverted dropout must scale by the keep probability rather than the drop probability.
+- Scaled dot-product attention and correct Kaiming/Xavier formulas are needed to keep activations and logits in a stable range.
+- Gradient clipping must be applied before the optimizer step, and the SGD weight-decay sign must match standard L2-style decay.
+- These fixes were grouped into one error because they all addressed the same remaining symptom: persistent `nan` loss after the training pipeline became runnable.
 
-Effect of the fix:
-
-- This should make the update path more stable and reduce the chance that large gradients or a malformed decay term immediately corrupt the parameters.
-- If `nan` still persists after this change, the remaining issues are likely deeper model-side numerical problems or additional custom optimizer logic.
 
 ## Error 018
 
@@ -1295,7 +1087,3 @@ Reason for the fix:
 - The saved checkpoint format must be read consistently by both training and evaluation.
 - Using the actual saved field name allows evaluation to reload the checkpoint correctly.
 
-Effect of the fix:
-
-- Section 4 should now move past this checkpoint-loading key mismatch.
-- The next rerun should expose any remaining evaluation-path issues, if any remain.
