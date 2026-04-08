@@ -1,4 +1,4 @@
-# Debug Error Log
+# Stage I Debug Log
 
 This file records the confirmed internal debugging errors reported from `assignment1.ipynb`.
 

@@ -1,17 +1,12 @@
 # Stage II Debug Log
 
-This file records confirmed Stage II mechanism-level fixes after the Stage I pipeline issues were resolved.
+This file records Stage II mechanism-level fixes after the Stage I pipeline issues were resolved.
 
 ## Losses
 
-- Reviewed `Losses/loss.py` and `Losses/__init__.py`.
-- No confirmed formula errors or severe logic conflicts were found in the loss implementations.
 - `qa_nll_loss(...)` and `qa_ce_loss(...)` are currently consistent with their stated expectations.
 
 ## Models / Activations
-
-- Reviewed `Models/Activations/relu.py`, `Models/Activations/leakeyReLU.py`, and `Models/Activations/activation_function.py`.
-- Confirmed and fixed two activation-formula errors.
 
 ### ReLU
 
@@ -66,9 +61,6 @@ return torch.where(x < 0, self.negative_slope * x, x)
 
 ## Models / Normalizations
 
-- Reviewed `Models/Normalizations/groupnorm.py`.
-- Confirmed and fixed one group-shape logic error in the custom GroupNorm implementation.
-
 ### GroupNorm
 
 Location:
@@ -96,9 +88,6 @@ x = x.view(B, self.G, C // self.G, *spatial)
 ```
 
 ## Models / Core Blocks
-
-- Reviewed the top-level model files in `Models/`, including `attention.py`, `encoder.py`, `dropout.py`, `conv.py`, `embedding.py`, `heads.py`, and `qanet.py`.
-- Confirmed and fixed one mechanism-level residual-connection error in `encoder.py`.
 
 ### Encoder self-attention residual path
 
@@ -131,9 +120,6 @@ out = self.drop(out)
 ```
 
 ## Optimizers
-
-- Reviewed `Optimizers/sgd.py`, `Optimizers/sgd_momentum.py`, `Optimizers/adam.py`, `Optimizers/optimizer.py`, and `Optimizers/__init__.py`.
-- Confirmed and fixed mechanism-level errors in the custom momentum SGD and Adam implementations.
 
 ### SGDMomentum
 
@@ -251,9 +237,6 @@ bias_correction2 = 1.0 - beta2 ** t
 
 ## Schedulers
 
-- Reviewed `Schedulers/scheduler.py`, `Schedulers/lambda_scheduler.py`, `Schedulers/step_scheduler.py`, `Schedulers/cosine_scheduler.py`, and `Schedulers/__init__.py`.
-- Confirmed and fixed multiple scheduler-formula and scheduler-semantics errors.
-
 ### LambdaLR
 
 Location:
@@ -345,8 +328,6 @@ return [
 
 ## EvaluateTools
 
-- Reviewed `EvaluateTools/evaluate.py` and `EvaluateTools/eval_utils.py`.
-- Confirmed and fixed one prediction-decoding error in the evaluation utilities.
 - Added a checkpoint-loading compatibility safeguard for newer PyTorch versions.
 
 ### Prediction decoding axis
