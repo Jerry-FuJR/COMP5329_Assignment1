@@ -526,41 +526,30 @@ bias_correction2 = 1.0 - beta2 ** t
 
 ### `Schedulers/scheduler.py` `[Stage I]`
 
-- Added `none_scheduler(...)` to the scheduler registry so the notebook configuration can request `scheduler_name="none"`.
+- Corrected the training configuration / scheduler-registry mismatch by using the existing `lambda` scheduler entry instead of an unsupported `none` value.
+- Replaced the inline constant lambda helper with a top-level `_constant_one(...)` function so the scheduler remains checkpoint-serializable.
 
-Added
+Training config
+
+```python
+scheduler_name = "none"
+```
+
+Updated
+
+```python
+scheduler_name = "lambda"
+```
+
+Scheduler implementation
 
 ```python
 def _constant_one(_):
     return 1.0
 
 
-def none_scheduler(optimizer, args):
-    """No-op scheduler used when the notebook requests no scheduler."""
+def lambda_scheduler(optimizer, args):
     return LambdaLR(optimizer, lr_lambda=_constant_one)
-```
-
-Registry update
-
-Original
-
-```python
-schedulers = {
-    "cosine":  cosine_scheduler,
-    "step":    step_scheduler,
-    "lambda":  lambda_scheduler,
-}
-```
-
-Updated
-
-```python
-schedulers = {
-    "none":    none_scheduler,
-    "cosine":  cosine_scheduler,
-    "step":    step_scheduler,
-    "lambda":  lambda_scheduler,
-}
 ```
 
 ### `Schedulers/lambda_scheduler.py` `[Stage II]`
