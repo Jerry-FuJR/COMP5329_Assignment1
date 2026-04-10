@@ -138,54 +138,46 @@ Possible cause inferred from the traceback:
 Problems found after checking the related part:
 
 - `Schedulers/scheduler.py` only registered `cosine`, `step`, and `lambda`.
-- There was no no-op scheduler available under the name `none`.
+- After confirming with the teaching staff, `none` was not intended to be a valid scheduler name.
+- In this assignment setup, `lambda` already serves as the fixed-learning-rate / no-op scheduler.
 - Because the registry check happens before training begins, the pipeline stops immediately at configuration validation.
 
 Applied fix:
 
-- Added a no-op scheduler option named `none` to the scheduler registry.
+- Updated the training configuration to request `scheduler_name="lambda"` instead of `scheduler_name="none"`.
+- Kept the fixed-learning-rate scheduler under the existing `lambda` entry.
+- Replaced the inline `lambda _: 1.0` helper with a top-level `_constant_one` function so scheduler checkpoints remain pickle-safe.
 
 Code change:
 
-Added
+Training config
+
+```python
+scheduler_name = "none"
+```
+
+Updated
+
+scheduler_name = "lambda"
+```
+
+Scheduler implementation
 
 ```python
 def _constant_one(_):
     return 1.0
 
 
-def none_scheduler(optimizer, args):
-    """No-op scheduler used when the notebook requests no scheduler."""
+def lambda_scheduler(optimizer, args):
+    """LambdaLR with a constant factor of 1.0 - learning rate stays fixed."""
     return LambdaLR(optimizer, lr_lambda=_constant_one)
-```
-
-Registry update
-
-Original
-
-```python
-schedulers = {
-    "cosine":  cosine_scheduler,
-    "step":    step_scheduler,
-    "lambda":  lambda_scheduler,
-}
-```
-
-Updated
-
-```python
-schedulers = {
-    "none":    none_scheduler,
-    "cosine":  cosine_scheduler,
-    "step":    step_scheduler,
-    "lambda":  lambda_scheduler,
-}
 ```
 
 Reason for the fix:
 
-- The training configuration used in Section 3 explicitly requests `scheduler_name="none"`.
-- To make that configuration executable, the scheduler registry needs a corresponding entry that leaves the learning rate unchanged.
+- The original failure came from a mismatch between the notebook configuration and the scheduler registry.
+- After clarification, the correct fix was to use the existing `lambda` scheduler entry rather than introduce a new `none` scheduler.
+- The `_constant_one` helper preserves the same no-op learning-rate behaviour while avoiding checkpoint serialization issues caused by local anonymous lambdas.
 
 
 ## Error 004

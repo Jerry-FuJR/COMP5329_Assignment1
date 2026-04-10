@@ -28,18 +28,12 @@ def step_scheduler(optimizer, args):
 
 def lambda_scheduler(optimizer, args):
     """LambdaLR with a constant factor of 1.0 — learning rate stays fixed."""
-    return LambdaLR(optimizer, lr_lambda=lambda _: 1.0)
+    return LambdaLR(optimizer, lr_lambda=_constant_one)
 
 
 # ── Registry ─────────────────────────────────────────────────────────────────
 
-def none_scheduler(optimizer, args):
-    """No-op scheduler used when the notebook requests no scheduler."""
-    return LambdaLR(optimizer, lr_lambda=_constant_one)
-
-
 schedulers = {
-    "none":    none_scheduler,
     "cosine":  cosine_scheduler,
     "step":    step_scheduler,
     "lambda":  lambda_scheduler,
