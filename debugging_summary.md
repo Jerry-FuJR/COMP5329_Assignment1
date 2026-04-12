@@ -10,6 +10,10 @@ This file consolidates the confirmed code changes from `STAGE1_DEBUG_LOG.md` and
 
 ### `TrainTools/train.py` `[Stage I]`
 
+Current location:
+
+- `TrainTools/train.py:107`
+
 - Corrected argument packaging for the training entry path.
 
 Original
@@ -25,6 +29,11 @@ args = argparse.Namespace(**{k: v for k, v in locals().items()})
 ```
 
 ### `TrainTools/train_utils.py` `[Stage I]`
+
+Current location:
+
+- backward pass: `TrainTools/train_utils.py:34`
+- gradient clipping / optimizer order: `TrainTools/train_utils.py:35-36`
 
 - Corrected the backward pass to use the tensor loss rather than a Python float.
 
@@ -64,6 +73,10 @@ scheduler.step()
 
 ### `Losses/loss.py` `[Stage I]`
 
+Current location:
+
+- `Losses/loss.py:7`
+
 - Corrected the argument order of the first `F.nll_loss(...)` call in `qa_nll_loss(...)`.
 
 Original
@@ -82,6 +95,10 @@ return 0.5 * (F.nll_loss(p1, y1) + F.nll_loss(p2, y2))
 
 ### `Models/Activations/relu.py` `[Stage II]`
 
+Current location:
+
+- `Models/Activations/relu.py:12`
+
 - Corrected the ReLU clamp direction.
 
 Original
@@ -97,6 +114,10 @@ return x.clamp(min=0.0)
 ```
 
 ### `Models/Activations/leakeyReLU.py` `[Stage II]`
+
+Current location:
+
+- `Models/Activations/leakeyReLU.py:19`
 
 - Corrected the LeakyReLU branch logic.
 
@@ -116,6 +137,10 @@ return torch.where(x < 0, self.negative_slope * x, x)
 
 ### `Models/qanet.py` `[Stage I]`
 
+Current location:
+
+- `Models/qanet.py:65-66`
+
 - Corrected context word and character embedding routing.
 
 Original
@@ -133,6 +158,11 @@ Qw, Qc = self.word_emb(Qwid), self.char_emb(Qcid)
 ```
 
 ### `Models/embedding.py` `[Stage I]`
+
+Current location:
+
+- highway transpose: `Models/embedding.py:19`
+- char embedding permutation: `Models/embedding.py:39`
 
 - Corrected the character embedding permutation before 2D convolution.
 
@@ -165,6 +195,12 @@ x = x.transpose(1, 2)
 ## Models / Convolution Blocks
 
 ### `Models/conv.py` `[Stage I]`
+
+Current location:
+
+- unfold dimension: `Models/conv.py:55`
+- width padding: `Models/conv.py:124`
+- depthwise/pointwise order: `Models/conv.py:175`
 
 - Corrected width-padding tensor creation in `Conv2d.forward()`.
 
@@ -212,6 +248,11 @@ return self.pointwise_conv(self.depthwise_conv(x))
 
 ### `Models/Normalizations/layernorm.py` `[Stage I]`
 
+Current location:
+
+- normalization stats: `Models/Normalizations/layernorm.py:37`
+- affine application: `Models/Normalizations/layernorm.py:41`
+
 - Corrected LayerNorm broadcasting and affine application.
 
 Original
@@ -236,6 +277,10 @@ return x_norm * self.weight + self.bias
 
 ### `Models/Normalizations/groupnorm.py` `[Stage II]`
 
+Current location:
+
+- `Models/Normalizations/groupnorm.py:35`
+
 - Corrected the group/channel reshape order.
 
 Original
@@ -254,6 +299,10 @@ x = x.view(B, self.G, C // self.G, *spatial)
 
 ### `Models/Initializations/kaiming.py` `[Stage I]`
 
+Current location:
+
+- `Models/Initializations/kaiming.py:25`
+
 - Corrected the Kaiming standard deviation formula.
 
 Original
@@ -269,6 +318,10 @@ std = math.sqrt(2.0 / fan)
 ```
 
 ### `Models/Initializations/xavier.py` `[Stage I]`
+
+Current location:
+
+- `Models/Initializations/xavier.py:24`
 
 - Corrected the Xavier standard deviation formula.
 
@@ -287,6 +340,12 @@ std = gain * math.sqrt(2.0 / (fan_in + fan_out))
 ## Models / Attention and Encoder
 
 ### `Models/encoder.py` `[Stage I]`
+
+Current location:
+
+- positional encoding frequency shape: `Models/encoder.py:32`
+- scaled dot-product attention: `Models/encoder.py:78`
+- encoder normalization indexing: `Models/encoder.py:121`
 
 - Corrected the positional-encoding frequency tensor shape.
 
@@ -332,6 +391,10 @@ attn = torch.bmm(q, k.transpose(1, 2)) * self.scale
 
 ### `Models/encoder.py` `[Stage II]`
 
+Current location:
+
+- self-attention residual path: `Models/encoder.py:117`
+
 - Corrected the self-attention residual path so attention output is not overwritten.
 
 Original
@@ -352,6 +415,10 @@ out = self.drop(out)
 
 ### `Models/qanet.py` `[Stage I]`
 
+Current location:
+
+- `Models/qanet.py:75`
+
 - Corrected the mask order passed into context-question attention.
 
 Original
@@ -368,6 +435,10 @@ X = self.cq_att(Ce, Qe, cmask, qmask)
 
 ### `Models/attention.py` `[Stage I]`
 
+Current location:
+
+- `Models/attention.py:38`
+
 - Corrected the batch-matrix multiplication order in `CQAttention`.
 
 Original
@@ -383,6 +454,10 @@ A = torch.bmm(S1, Q)
 ```
 
 ### `Models/dropout.py` `[Stage I]`
+
+Current location:
+
+- `Models/dropout.py:17`
 
 - Corrected inverted-dropout scaling to divide by keep probability.
 
@@ -402,6 +477,10 @@ return x * mask / (1.0 - self.p)
 
 ### `Models/heads.py` `[Stage I]`
 
+Current location:
+
+- `Models/heads.py:23`
+
 - Corrected pointer-head feature concatenation to use the channel dimension.
 
 Original
@@ -420,6 +499,10 @@ X1 = torch.cat([M1, M2], dim=1)  # [B, 2C, L]
 
 ### `Optimizers/sgd.py` `[Stage I]`
 
+Current location:
+
+- `Optimizers/sgd.py:39`
+
 - Corrected the sign of the weight-decay term.
 
 Original
@@ -435,6 +518,11 @@ grad = grad.add(p, alpha=wd)
 ```
 
 ### `Optimizers/sgd_momentum.py` `[Stage II]`
+
+Current location:
+
+- velocity state key: `Optimizers/sgd_momentum.py:49`
+- momentum update: `Optimizers/sgd_momentum.py:54`
 
 - Unified the velocity state key and corrected the momentum update rule.
 
@@ -459,6 +547,13 @@ v.mul_(mu).add_(grad)
 ```
 
 ### `Optimizers/adam.py` `[Stage II]`
+
+Current location:
+
+- weight decay: `Optimizers/adam.py:53`
+- state keys: `Optimizers/adam.py:63`
+- second moment: `Optimizers/adam.py:69`
+- bias correction: `Optimizers/adam.py:72-73`
 
 - Corrected weight decay, state-key access, second-moment accumulation, and bias-correction formulas.
 
@@ -526,6 +621,12 @@ bias_correction2 = 1.0 - beta2 ** t
 
 ### `Schedulers/scheduler.py` `[Stage I]`
 
+Current location:
+
+- helper function: `Schedulers/scheduler.py:6`
+- lambda scheduler body: `Schedulers/scheduler.py:29-31`
+- scheduler registry entry: `Schedulers/scheduler.py:39`
+
 - Corrected the training configuration / scheduler-registry mismatch by using the existing `lambda` scheduler entry instead of an unsupported `none` value.
 - Replaced the inline constant lambda helper with a top-level `_constant_one(...)` function so the scheduler remains checkpoint-serializable.
 
@@ -554,6 +655,10 @@ def lambda_scheduler(optimizer, args):
 
 ### `Schedulers/lambda_scheduler.py` `[Stage II]`
 
+Current location:
+
+- `Schedulers/lambda_scheduler.py:23`
+
 - Corrected `LambdaLR` to multiply by the lambda factor rather than add it.
 
 Original
@@ -569,6 +674,10 @@ return [base_lr * factor for base_lr in self.base_lrs]
 ```
 
 ### `Schedulers/step_scheduler.py` `[Stage II]`
+
+Current location:
+
+- `Schedulers/step_scheduler.py:25`
 
 - Corrected `StepLR` to use exponential step decay.
 
@@ -591,6 +700,10 @@ return [
 ```
 
 ### `Schedulers/cosine_scheduler.py` `[Stage II]`
+
+Current location:
+
+- `Schedulers/cosine_scheduler.py:28`
 
 - Corrected the cosine annealing formula and constant name.
 
@@ -616,6 +729,10 @@ return [
 
 ### `EvaluateTools/evaluate.py` `[Stage I]`
 
+Current location:
+
+- checkpoint load path: `EvaluateTools/evaluate.py:119`
+
 - Corrected the checkpoint key used when loading model weights.
 
 Original
@@ -632,6 +749,10 @@ model.load_state_dict(ckpt["model_state"])
 
 ### `EvaluateTools/evaluate.py` `[Stage II]`
 
+Current location:
+
+- `EvaluateTools/evaluate.py:118`
+
 - Added `weights_only=False` to `torch.load(...)` as a compatibility safeguard for newer PyTorch versions when loading trusted local checkpoints.
 
 Original
@@ -647,6 +768,10 @@ ckpt = torch.load(ckpt_path, map_location=DEVICE, weights_only=False)
 ```
 
 ### `EvaluateTools/eval_utils.py` `[Stage II]`
+
+Current location:
+
+- `EvaluateTools/eval_utils.py:107-108`
 
 - Corrected prediction decoding to take `argmax(...)` over the sequence dimension per example.
 
